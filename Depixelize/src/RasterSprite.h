@@ -9,11 +9,12 @@
 class RasterSprite
 {
 private:
+	// Data about loading image data
 	std::string imagePath;
 	unsigned char* localBuffer;
 	int imageWidth, imageHeight, bitsPerPixel;
 
-	//Texture displayTexture;
+	// Data about rendering the image
 	std::vector<std::vector<unsigned int>> pixelData;
 	float spriteScale;
 	float pixelRenderWidth, pixelRenderHeight;
@@ -27,8 +28,6 @@ public:
 
 	void getVertices(float vertices[]);
 	void getIndices(unsigned int indices[]);
-
-	//Texture getDisplayTexture() const;
 
 	float* getRasterTriangles();
 	unsigned int* getRasterIndices();

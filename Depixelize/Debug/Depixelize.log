@@ -1,3 +1,8 @@
 ﻿  Application.cpp
 C:\Users\shrey\source\repos\Depixelize\Depixelize\src\Application.cpp(67,50): warning C4305: 'argument': truncation from 'double' to 'float'
+  HalfEdgeObjects.cpp
+  SubPixel.cpp
+  VoroniGraph.cpp
+C:\Users\shrey\source\repos\Depixelize\Depixelize\src\VoroniGraph.cpp(286,20): warning C4018: '<': signed/unsigned mismatch
+  Generating Code...
   Depixelize.vcxproj -> C:\Users\shrey\source\repos\Depixelize\Debug\Depixelize.exe

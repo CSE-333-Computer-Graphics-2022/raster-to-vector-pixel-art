@@ -161,7 +161,6 @@ void VoroniGraph::setVoroniGraphTriangles()
 	{
 		for (int j = 0; j < pixelCols; j++)
 		{
-			//std::cout << "CYCLING " << i << " " << j << " | " << pixelFaces[i][j].getPosX() << " " << pixelFaces[i][j].getPosY() << std::endl;
 			HalfEdge* start = pixelFaces[i][j].getEdge();
 			HalfEdge* curr = start;
 			int rep = 0;
@@ -217,6 +216,104 @@ void VoroniGraph::setVoroniGraphTriangles()
 	}
 }
 
+void VoroniGraph::setVoroniVisibleEdgeLines()
+{
+	std::vector<float> renderVertices;
+
+	int pixelRows = sprite->getPixelRows();
+	int pixelCols = sprite->getPixelCols();
+
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			HalfEdge* start = pixelFaces[i][j].getEdge();
+			HalfEdge* curr = start;
+			int rep = 0;
+			do
+			{
+				if (curr == NULL)
+					break;
+				if (curr->isVisible())
+				{
+					float r = 0.0f;
+					float g = 1.0f;
+					float b = 0.0f;
+					float a = 1.0f;
+
+					// TESTING CODE: Check if edge has been excluded from a T Junction. Colour it differently if yes
+					bool partOfJunction1 = curr->getVertex()->getIncomingOf(curr) != NULL;
+					bool partOfJunction2 = curr->getOpp()->getVertex()->getOutgoingOf(curr) != NULL;
+					bool partOfJunctions = partOfJunction1 && partOfJunction2;
+					/*if (!partOfJunctions)
+					{
+						b = 1.0f;
+						g = 0.0f;
+					}*/
+
+					float x1 = curr->getVertex()->getPosX();
+					float y1 = curr->getVertex()->getPosY();
+					float x2 = curr->getNext()->getVertex()->getPosX();
+					float y2 = curr->getNext()->getVertex()->getPosY();
+
+					renderVertices.push_back(x1);
+					renderVertices.push_back(y1);
+					renderVertices.push_back(r);
+					renderVertices.push_back(g);
+					renderVertices.push_back(b);
+					renderVertices.push_back(a);
+
+					renderVertices.push_back(x2);
+					renderVertices.push_back(y2);
+					renderVertices.push_back(r);
+					renderVertices.push_back(g);
+					renderVertices.push_back(b);
+					renderVertices.push_back(a);
+				}
+				curr = curr->getNext();
+
+			} while (curr != start);
+		}
+	}
+
+	voroniVisibleEdgeCount = renderVertices.size() / 12;
+
+	free(voroniVisibleEdgeLines);
+	free(voroniVisibleEdgeIndices);
+
+	voroniVisibleEdgeLines = (float*)malloc(renderVertices.size() * sizeof(float));
+	voroniVisibleEdgeIndices = (unsigned int*)malloc(renderVertices.size() * sizeof(unsigned int));
+	for (int i = 0; i < renderVertices.size(); i++)
+	{
+		voroniVisibleEdgeLines[i] = renderVertices[i];
+		voroniVisibleEdgeIndices[i] = i;
+	}
+}
+
+void VoroniGraph::setHalfEdgesVisibility()
+{
+	int pixelRows = sprite->getPixelRows();
+	int pixelCols = sprite->getPixelCols();
+
+	// Set visibility of each of the edges in the graph
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			HalfEdge* start = pixelFaces[i][j].getEdge();
+			HalfEdge* curr = start;
+			do
+			{
+				if (curr == NULL)
+					break;
+				curr->setVisibility();
+				curr->getVertex()->resolveTJunctions();
+				curr = curr->getNext();
+			} while (curr != start);
+		}
+	}
+}
+
 void VoroniGraph::simplifyVoroniGraph()
 {
 	int pixelRows = sprite->getPixelRows();
@@ -234,10 +331,187 @@ void VoroniGraph::simplifyVoroniGraph()
 				if (k == 2) v = subpixels[i][j].getVertexL();
 				if (k == 3) v = subpixels[i][j].getVertexR();
 
+				HalfEdge* e1 = v->getEdge()->getOpp();
+				HalfEdge* e2 = v->getEdge()->getPrev();
+
 				v->getEdge()->getOpp()->setNextwithPrev(v->getEdge()->getPrev()->getOpp()->getNext());
 				v->getEdge()->getPrev()->setNextwithPrev(v->getEdge()->getNext());
 				
+				e1->setOppPair(e2);
 			}
+		}
+	}
+}
+
+Vector2D* VoroniGraph::findBezierPoint(HalfEdge* edge)
+{
+	if (edge == NULL || !edge->isVisible())
+	{
+		//std::cout << "Edge not visible" << std::endl;
+		return NULL;
+	}
+		
+
+	// Getting the 4 points adjacent to a halfedge
+	Vector2D* v1;
+	Vector2D* v2;
+	Vector2D* v3;
+	Vector2D* v4;
+	v1 = v2 = v3 = v4 = NULL;
+
+	VoroniVertex* p2 = edge->getVertex();
+	v2 = new Vector2D(p2->getPosX(), p2->getPosY());
+
+	HalfEdge* edgeprev = p2->getIncomingOf(edge);
+	if (edgeprev != NULL)
+	{
+		VoroniVertex* p1 = edgeprev->getVertex();
+		v1 = new Vector2D(p1->getPosX(), p1->getPosY());
+	}
+
+	VoroniVertex* p3 = edge->getOpp()->getVertex();
+	v3 = new Vector2D(p3->getPosX(), p3->getPosY());
+
+	HalfEdge* edgenext = p3->getIncomingOf(edge->getOpp());
+	if (edgenext != NULL)
+	{
+		VoroniVertex* p4 = edgenext->getVertex();
+		v4 = new Vector2D(p4->getPosX(), p4->getPosY());
+	}
+
+	if (v1 == NULL)
+	{
+		//std::cout << "v1 is null" << std::endl;
+		return NULL;
+	}
+	else if(v4 == NULL)
+	{
+		//std::cout << "v4 is null" << std::endl;
+		return NULL;
+	}
+	else
+	{
+		float xs1 = v2->x - v4->x;
+		float ys1 = v2->y - v4->y;
+
+		float a1 = ys1;
+		float b1 = -xs1;
+		float c1 = xs1 * (v3->y) - ys1 * (v3->x);
+
+		float xs2 = v1->x - v3->x;
+		float ys2 = v1->y - v3->y;
+
+		float a2 = ys2;
+		float b2 = -xs2;
+		float c2 = xs2 * (v2->y) - ys2 * (v2->x);
+
+		if (abs(a1 * b2 - a2 * b1) < 0.0003f)
+			return NULL;
+		else
+		{
+			float x_ans = (b1 * c2 - b2 * c1) / (a1 * b2 - a2 * b1);
+			float y_ans = (a2 * c1 - a1 * c2) / (a1 * b2 - a2 * b1);
+
+			return new Vector2D(x_ans, y_ans);
+		}
+	}
+}
+
+void VoroniGraph::insertSplineCurve(HalfEdge* edge, Vector2D* bezierPoint, int samples)
+{
+	//std::cout << "H0 - spline" << std::endl;
+	//Vector2D* bezierPoint = findBezierPoint(edge);
+	if (bezierPoint == NULL)
+	{
+		//std::cout << "No bezier point found" << std::endl;
+		return;
+	}
+
+	//std::cout << "H1" << std::endl;
+
+	Vector2D p0(edge->getVertex()->getPosX(), edge->getVertex()->getPosY());
+	Vector2D p1(bezierPoint->x, bezierPoint->y);
+	Vector2D p2(edge->getOpp()->getVertex()->getPosX(), edge->getOpp()->getVertex()->getPosY());
+
+	VoroniVertex* startVertex = edge->getVertex();
+	VoroniVertex* endVertex = edge->getVertex();
+
+	for (int i = 0; i < samples; i++)
+	{
+		//std::cout << "Working on sample " << i << std::endl;
+		float t = ((float)(i + 1)) / ((float)(samples + 1));
+		Vector2D vec((1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
+					 (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y);
+		
+		edge->setVisibility(false);
+		edge->getOpp()->setVisibility(false);
+
+		// Inserting new vertex between start and end vertices
+		VoroniVertex* newVertex = new VoroniVertex(vec.x, vec.y);
+		newVertex->setEdge(new HalfEdge(newVertex, edge->getPixel()));
+		newVertex->getEdge()->setNextwithPrev(edge->getNext());
+		HalfEdge* e1 = new HalfEdge(newVertex, edge->getOpp()->getPixel());
+		e1->setNextwithPrev(edge->getOpp()->getNext());
+
+		edge->getOpp()->setNextwithPrev(e1);
+		edge->setNextwithPrev(newVertex->getEdge());
+
+		newVertex->getEdge()->setOppPair(edge->getOpp());
+		edge->setOppPair(e1);
+
+		startVertex = newVertex;
+		edge = newVertex->getEdge();
+	}
+}
+
+void VoroniGraph::replaceVisibleEdgesWithSplines()
+{
+	int pixelRows = sprite->getPixelRows();
+	int pixelCols = sprite->getPixelCols();
+
+	std::map<HalfEdge*, Vector2D*> mp;
+	if (mp[pixelFaces[0][0].getEdge()] == NULL)
+		std::cout << "POTENTIAL??" << std::endl;
+
+	// Set visibility of each of the edges in the graph
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			//std::cout << "AT i = " << i << " j = " << j << std::endl;
+			HalfEdge* start = pixelFaces[i][j].getEdge();
+			HalfEdge* curr = start;
+			do
+			{
+				if (curr == NULL)
+					break;
+				HalfEdge* next = curr->getNext();
+				if (curr->isVisible() /*&& mp[curr->getOpp()] == NULL */ )
+				{
+					mp[curr] = findBezierPoint(curr);
+					//insertSplineCurve(curr, 10);
+				}
+				curr = next;
+			} while (curr != start);
+		}
+	}
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			HalfEdge* start = pixelFaces[i][j].getEdge();
+			HalfEdge* curr = start;
+			do
+			{
+				if (curr == NULL)
+					break;
+				HalfEdge* next = curr->getNext();
+				if (curr->isVisible() && mp[curr] != NULL)
+				{
+					insertSplineCurve(curr, mp[curr], 50);
+				}
+				curr = next;
+			} while (curr != start);
 		}
 	}
 }
@@ -273,16 +547,16 @@ void VoroniGraph::constructBorderEdges()
 	}
 
 	// These will form the CORNER vertices of the vectorised image
-	VoroniVertex vertexTL(pixelFaces[0][0].getPosX() - sprite->getPixelRenderWidth() / 2, pixelFaces[0][0].getPosY() + sprite->getPixelRenderHeight() / 2);
-	VoroniVertex vertexTR(pixelFaces[0][pixelCols-1].getPosX() + sprite->getPixelRenderWidth() / 2, pixelFaces[0][pixelCols-1].getPosY() - sprite->getPixelRenderHeight() / 2);
-	VoroniVertex vertexBL(pixelFaces[pixelRows-1][0].getPosX() - sprite->getPixelRenderWidth() / 2, pixelFaces[pixelRows-1][0].getPosY() + sprite->getPixelRenderHeight() / 2);
-	VoroniVertex vertexBR(pixelFaces[pixelRows-1][pixelCols - 1].getPosX() + sprite->getPixelRenderWidth() / 2, pixelFaces[pixelRows-1][pixelCols - 1].getPosY() - sprite->getPixelRenderHeight() / 2);
+	VoroniVertex* vertexTL = new VoroniVertex(pixelFaces[0][0].getPosX() - sprite->getPixelRenderWidth() / 2, pixelFaces[0][0].getPosY() + sprite->getPixelRenderHeight() / 2);
+	VoroniVertex* vertexTR = new VoroniVertex(pixelFaces[0][pixelCols-1].getPosX() + sprite->getPixelRenderWidth() / 2, pixelFaces[0][pixelCols-1].getPosY() - sprite->getPixelRenderHeight() / 2);
+	VoroniVertex* vertexBL = new VoroniVertex(pixelFaces[pixelRows-1][0].getPosX() - sprite->getPixelRenderWidth() / 2, pixelFaces[pixelRows-1][0].getPosY() + sprite->getPixelRenderHeight() / 2);
+	VoroniVertex* vertexBR = new VoroniVertex(pixelFaces[pixelRows-1][pixelCols - 1].getPosX() + sprite->getPixelRenderWidth() / 2, pixelFaces[pixelRows-1][pixelCols - 1].getPosY() - sprite->getPixelRenderHeight() / 2);
 
 
 	// Constructing edges for the TOP LEFT Corner
 	topRowVertices[0].setEdge(new HalfEdge(&topRowVertices[0], &pixelFaces[0][0]));
-	vertexTL.setEdge(new HalfEdge(&vertexTL, &pixelFaces[0][0]));
-	topRowVertices[0].getEdge()->setNextwithPrev(vertexTL.getEdge());
+	vertexTL->setEdge(new HalfEdge(vertexTL, &pixelFaces[0][0]));
+	topRowVertices[0].getEdge()->setNextwithPrev(vertexTL->getEdge());
 
 	// Constructing edges for TOP ROW
 	for (int i = 0; i < pixelCols - 1; i++)
@@ -291,7 +565,7 @@ void VoroniGraph::constructBorderEdges()
 		subpixels[0][i].getVertexU()->getEdge()->setNextwithPrev(topRowVertices[i].getEdge());
 
 		HalfEdge* p = new HalfEdge(&topRowVertices[i], &pixelFaces[0][i + 1]);
-		VoroniVertex* nextVertex = &vertexTR;
+		VoroniVertex* nextVertex = vertexTR;
 		if (i + 1 < pixelCols - 1)
 			nextVertex = &topRowVertices[i + 1];
 
@@ -303,7 +577,7 @@ void VoroniGraph::constructBorderEdges()
 
 	// Constructing edges for RIGHT COLUMN
 	rightColVertices[0].setEdge(new HalfEdge(&rightColVertices[0], &pixelFaces[0][pixelCols - 1]));
-	rightColVertices[0].getEdge()->setNextwithPrev(vertexTR.getEdge());
+	rightColVertices[0].getEdge()->setNextwithPrev(vertexTR->getEdge());
 	for (int i = 0; i < pixelRows - 1; i++)
 	{
 		HalfEdge* e = new HalfEdge(subpixels[i][pixelCols - 2].getVertexR(), &pixelFaces[i][pixelCols - 1]);
@@ -311,7 +585,7 @@ void VoroniGraph::constructBorderEdges()
 		subpixels[i][pixelCols - 2].getVertexR()->getEdge()->setNextwithPrev(rightColVertices[i].getEdge());
 
 		HalfEdge* p = new HalfEdge(&rightColVertices[i], &pixelFaces[i + 1][pixelCols - 1]);
-		VoroniVertex* nextVertex = &vertexBR;
+		VoroniVertex* nextVertex = vertexBR;
 		if (i + 1 < pixelRows - 1)
 			nextVertex = &rightColVertices[i + 1];
 
@@ -323,14 +597,14 @@ void VoroniGraph::constructBorderEdges()
 
 	// Constructing edges for BOTTOM ROW
 	bottomRowVertices[pixelCols - 2].setEdge(new HalfEdge(&bottomRowVertices[pixelCols - 2], &pixelFaces[pixelRows - 1][pixelCols - 1]));
-	bottomRowVertices[pixelCols - 2].getEdge()->setNextwithPrev(vertexBR.getEdge());
+	bottomRowVertices[pixelCols - 2].getEdge()->setNextwithPrev(vertexBR->getEdge());
 	for (int i = pixelCols - 2; i >= 0; i--)
 	{
 		subpixels[pixelRows - 2][i].getVertexD()->setEdge(new HalfEdge(subpixels[pixelRows - 2][i].getVertexD(), &pixelFaces[pixelRows - 1][i + 1]));
 		subpixels[pixelRows - 2][i].getVertexD()->getEdge()->setNextwithPrev(bottomRowVertices[i].getEdge());
 
 		HalfEdge* p = new HalfEdge(&bottomRowVertices[i], &pixelFaces[pixelRows - 1][i]);
-		VoroniVertex* nextVertex = &vertexBL;
+		VoroniVertex* nextVertex = vertexBL;
 		if (i > 0)
 			nextVertex = &bottomRowVertices[i - 1];
 
@@ -342,14 +616,14 @@ void VoroniGraph::constructBorderEdges()
 	
 	// Constructing edges for LEFT COLUMN
 	leftColVertices[pixelRows - 2].setEdge(new HalfEdge(&leftColVertices[pixelRows - 2], &pixelFaces[pixelRows - 1][0]));
-	leftColVertices[pixelRows - 2].getEdge()->setNextwithPrev(vertexBL.getEdge());
+	leftColVertices[pixelRows - 2].getEdge()->setNextwithPrev(vertexBL->getEdge());
 	for (int i = pixelRows - 2; i >= 0; i--)
 	{
 		subpixels[i][0].getVertexL()->setEdge(new HalfEdge(subpixels[i][0].getVertexL(), &pixelFaces[i + 1][0]));
 		subpixels[i][0].getVertexL()->getEdge()->setNextwithPrev(leftColVertices[i].getEdge());
 
 		HalfEdge* p = new HalfEdge(&leftColVertices[i], &pixelFaces[i][0]);
-		VoroniVertex* nextVertex = &vertexTL;
+		VoroniVertex* nextVertex = vertexTL;
 		if (i > 0)
 		{
 			nextVertex = &leftColVertices[i - 1];
@@ -395,6 +669,8 @@ void VoroniGraph::constructBorderEdges()
 			}
 		}
 	}
+
+	setHalfEdgesVisibility();
 }
 
 void VoroniGraph::constructSubPixelEdges()
@@ -491,7 +767,7 @@ void VoroniGraph::constructSubPixelEdges()
 				HalfEdge* e2 = new HalfEdge(v, &pixelFaces[i][j+1]);
 				HalfEdge* e3 = new HalfEdge(v, &pixelFaces[i+1][j+1]);
 				HalfEdge* e4 = new HalfEdge(v, &pixelFaces[i+1][j]);
-				HalfEdge* e5 = new HalfEdge(subpixels[i][j].getVertexU(), &pixelFaces[i+1][j]);
+				HalfEdge* e5 = new HalfEdge(subpixels[i][j].getVertexU(), &pixelFaces[i][j+1]);
 				HalfEdge* e6 = new HalfEdge(subpixels[i][j].getVertexL(), &pixelFaces[i][j]);
 				v->setEdge(e1);
 
@@ -514,4 +790,7 @@ void VoroniGraph::constructSubPixelEdges()
 			}
 		}
 	}
+
+	// Set visibility of each of the edges in the graph
+	setHalfEdgesVisibility();
 }

@@ -1,8 +1,12 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
+
+#include "Vector2D.h"
 
 class HalfEdge;
+class PixelFace;
 
 class VoroniVertex
 {
@@ -11,14 +15,24 @@ public:
 	float posY;
 	HalfEdge* edge;
 
+	// Pair of visible edges that are adjacent (if any)
+	HalfEdge** incomingOutgoingEdgePair;
+	int incomingOutgoingEdgePairCount;
+
 	VoroniVertex(float xpos, float ypos)
-		: posX(xpos), posY(ypos)
+		: posX(xpos), posY(ypos), incomingOutgoingEdgePair(NULL), incomingOutgoingEdgePairCount(0)
 	{
 		edge = NULL;
 	}
+	~VoroniVertex();
+
+	void resolveTJunctions();
 
 	inline void setPosition(float x, float y) { posX = x; posY = y; edge = NULL; }
 	inline void setEdge(HalfEdge* nedge) { edge = nedge; }
+
+	HalfEdge* getOutgoingOf(HalfEdge* incomingEdge);
+	HalfEdge* getIncomingOf(HalfEdge* outgoingEdge);
 
 	inline float getPosX() { return posX; }
 	inline float getPosY() { return posY; }
@@ -38,19 +52,8 @@ private:
 	HalfEdge* edge;
 
 public:
-	inline PixelFace()
-	{
-		edge = NULL;
-		colR = 0.0f;
-		colG = 0.0f;
-		colB = 0.0f;
-		colA = 0.0f;
-	}
-	/*inline PixelFace(int i) :
-		index(i)
-	{
-		edge = NULL;
-	}*/
+	PixelFace();
+	~PixelFace();
 
 	inline void setPosition(float x, float y) { posX = x; posY = y; }
 	inline void setColor(float r, float g, float b, float a) { colR = r; colG = g; colB = b; colA = a; }
@@ -74,22 +77,19 @@ private:
 	HalfEdge* prev;
 	HalfEdge* opp;
 
+	bool visible;
+
 public:
 	inline HalfEdge(VoroniVertex* v, PixelFace* p)
-		: vertex(v), pixel(p)
+		: vertex(v), pixel(p), visible(false)
 	{
 		next = NULL;
 		prev = NULL;
 		opp = NULL;
 	}
-	/*inline HalfEdge(VoroniVertex v, PixelFace p)
-		: vertex(&v), pixel(&p)
-	{
-		next = NULL;
-		prev = NULL;
-		opp = NULL;
-	}*/
 
+	void setVisibility();
+	void setVisibility(bool setVisible);
 	inline void setNext(HalfEdge* e) { next = e; }
 	inline void setPrev(HalfEdge* e) { prev = e; }
 	inline void setOpp(HalfEdge* e) { opp = e; }
@@ -101,4 +101,5 @@ public:
 	inline HalfEdge* getNext() { return next; }
 	inline HalfEdge* getPrev() { return prev; }
 	inline HalfEdge* getOpp() { return opp; }
+	inline bool isVisible() { return visible; }
 };

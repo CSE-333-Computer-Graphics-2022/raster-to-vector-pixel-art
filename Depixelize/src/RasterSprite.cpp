@@ -53,11 +53,6 @@ void RasterSprite::getIndices(unsigned int indices[])
 	}
 }
 
-//Texture RasterSprite::getDisplayTexture() const
-//{
-//	return displayTexture;
-//}
-
 float* RasterSprite::getRasterTriangles()
 {
 	float* vertices = (float*)malloc(pixelRows * pixelCols * 4 * 6 * sizeof(float));

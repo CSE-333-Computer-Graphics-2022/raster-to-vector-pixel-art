@@ -30,7 +30,7 @@ int main(void)
     // *******************************************************************************
     
     // SCALABLE PARAMETERS
-    std::string imageSource = "res/textures/report_demo.png";
+    std::string imageSource = "res/textures/ralseisprite.png";
     int pixelsPerSquare = 1;
     int imageScale = 1500;
 
@@ -101,6 +101,15 @@ int main(void)
         graphEdgesRenderer.addFloatAttrib("Colour", 4);
         graphEdgesRenderer.AddBuffersToVAO();
 
+        // Renderer for Visible Edges in the Voronoi Diagram
+        voroni.setVoroniVisibleEdgeLines();
+        ObjectRenderer visibleEdgesRenderer(voroni.getVoroniVisibleEdgeLines(), voroni.getVoroniVisibleEdgeCount() * 12 * sizeof(float),
+            voroni.getVoroniGraphIndices(), voroni.getVoroniVisibleEdgeCount() * 2);
+        visibleEdgesRenderer.addFloatAttrib("Position", 2);
+        visibleEdgesRenderer.addFloatAttrib("Colour", 4);
+        visibleEdgesRenderer.AddBuffersToVAO();
+        std::cout << "NUMBER OF EDGES : " << voroni.getVoroniVisibleEdgeCount() << std::endl;
+
         // Adding Shaders in all the above renderers
         char vertexShaderPath[] = "res/shaders/VertexShader.shader";
         char fragmentShaderPath[] = "res/shaders/FragmentShader.shader";
@@ -108,6 +117,7 @@ int main(void)
         voroniRenderer.setShaders(vertexShaderPath, fragmentShaderPath);
         graphVerticesRenderer.setShaders(vertexShaderPath, fragmentShaderPath);
         graphEdgesRenderer.setShaders(vertexShaderPath, fragmentShaderPath);
+        visibleEdgesRenderer.setShaders(vertexShaderPath, fragmentShaderPath);
 
         // Derefencing all shaders & buffers
         glUseProgram(0);
@@ -124,6 +134,9 @@ int main(void)
         bool show_voroni_diagram = false;
         bool simplify_voroni_diagram = false;
         bool diagram_simplified = false;
+        bool show_visible_edges = false;
+        bool replace_visible_edges_with_splines = false;
+        bool splines_replaced = false;
 
         /* Loop until the user closes the window */
         while (!glfwWindowShouldClose(window))
@@ -146,6 +159,11 @@ int main(void)
                 voroniRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniGraphTriangleCount() / 6);
                 diagram_simplified = true;
                 show_voroni_diagram = true;
+
+                voroni.setHalfEdgesVisibility();
+                voroni.setVoroniVisibleEdgeLines();
+                visibleEdgesRenderer.updateVBO(voroni.getVoroniVisibleEdgeLines(), voroni.getVoroniVisibleEdgeCount() * 12 * sizeof(float));
+                visibleEdgesRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniVisibleEdgeCount() * 2);
             }
             // Desimplify the Voronoi diagram when user asks
             if (!simplify_voroni_diagram && diagram_simplified)
@@ -158,8 +176,39 @@ int main(void)
                 voroniRenderer.updateVBO(voroni.getVoroniGraphTriangles(), voroni.getVoroniGraphTriangleCount() * sizeof(float));
                 voroniRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniGraphTriangleCount() / 6);
                 diagram_simplified = false;
+
+                voroni.setHalfEdgesVisibility();
+                voroni.setVoroniVisibleEdgeLines();
+                visibleEdgesRenderer.updateVBO(voroni.getVoroniVisibleEdgeLines(), voroni.getVoroniVisibleEdgeCount() * 12 * sizeof(float));
+                visibleEdgesRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniVisibleEdgeCount() * 2);
             }
             // Display either the input raster image or the Voronoi diagram, based on user input
+            if (replace_visible_edges_with_splines)
+            {
+                if (!show_voroni_diagram)
+                {
+                    show_voroni_diagram = true;
+                }
+                else if (!simplify_voroni_diagram)
+                {
+                    simplify_voroni_diagram = true;
+                }
+                else if(!splines_replaced)
+                {
+                    voroni.replaceVisibleEdgesWithSplines();
+                    voroni.setHalfEdgesVisibility();
+                    voroni.setVoroniVisibleEdgeLines();
+                    visibleEdgesRenderer.updateVBO(voroni.getVoroniVisibleEdgeLines(), voroni.getVoroniVisibleEdgeCount() * 12 * sizeof(float));
+                    visibleEdgesRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniVisibleEdgeCount() * 2);
+
+                    voroni.setVoroniGraphTriangles();
+                    voroniRenderer.updateVBO(voroni.getVoroniGraphTriangles(), voroni.getVoroniGraphTriangleCount() * sizeof(float));
+                    voroniRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniGraphTriangleCount() / 6);
+
+                    splines_replaced = true;
+                }
+            }
+
             if(show_voroni_diagram)
             {
                 voroniRenderer.drawTriangles();
@@ -175,6 +224,10 @@ int main(void)
                 graphEdgesRenderer.drawLines();
                 graphVerticesRenderer.drawTriangles();
             }
+            if (show_visible_edges)
+            {
+                visibleEdgesRenderer.drawLines();
+            }
 
             // ImGUI Window
             {
@@ -182,6 +235,8 @@ int main(void)
                 ImGui::Checkbox("Show Similarity Graph", &show_similarity_graph);
                 ImGui::Checkbox("Show Voroni Diagram", &show_voroni_diagram);
                 ImGui::Checkbox("Simplify Voroni Diagram", &simplify_voroni_diagram);
+                ImGui::Checkbox("Show Visible Edges", &show_visible_edges);
+                ImGui::Checkbox("Replace Visible Edges with Splines", &replace_visible_edges_with_splines);
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             }
 

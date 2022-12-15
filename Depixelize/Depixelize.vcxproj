@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\HalfEdgeObjects.cpp" />
     <ClCompile Include="src\imgui\imgui.cpp" />
     <ClCompile Include="src\imgui\imgui_demo.cpp" />
     <ClCompile Include="src\imgui\imgui_draw.cpp" />
@@ -29,6 +30,7 @@
     <ClCompile Include="src\SimilarityGraph.cpp" />
     <ClCompile Include="src\stb_image.cpp" />
     <ClCompile Include="src\SubPixel.cpp" />
+    <ClCompile Include="src\Vector2D.cpp" />
     <ClCompile Include="src\VoroniGraph.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -74,6 +76,7 @@
     <ClInclude Include="src\SimilarityGraph.h" />
     <ClInclude Include="src\stb_image.h" />
     <ClInclude Include="src\SubPixel.h" />
+    <ClInclude Include="src\Vector2D.h" />
     <ClInclude Include="src\VoroniGraph.h" />
   </ItemGroup>
   <ItemGroup>
