@@ -32,6 +32,7 @@ void HalfEdge::setVisibility(bool setVisible)
 }
 
 PixelFace::PixelFace()
+	:index(0), pos(0.0f, 0.0f)
 {
 	edge = NULL;
 	colR = 0.0f;
@@ -81,9 +82,9 @@ void VoroniVertex::resolveTJunctions()
 			VoroniVertex* p2 = outgoingVisibleEdges[1]->getOpp()->getVertex();
 			VoroniVertex* p3 = outgoingVisibleEdges[2]->getOpp()->getVertex();
 
-			Vector2D v1(p1->getPosX() - posX, p1->getPosY() - posY);
-			Vector2D v2(p2->getPosX() - posX, p2->getPosY() - posY);
-			Vector2D v3(p3->getPosX() - posX, p3->getPosY() - posY);
+			Vector2D v1(p1->getPosX() - pos.x, p1->getPosY() - pos.y);
+			Vector2D v2(p2->getPosX() - pos.x, p2->getPosY() - pos.y);
+			Vector2D v3(p3->getPosX() - pos.x, p3->getPosY() - pos.y);
 
 			float v1v2 = v1 * v2;
 			float v2v3 = v2 * v3;
@@ -158,4 +159,11 @@ HalfEdge* VoroniVertex::getIncomingOf(HalfEdge* outgoingEdge)
 			return incomingOutgoingEdgePair[i - 1];
 	}
 	return NULL;
+}
+
+HalfEdge* VoroniVertex::getOutgoingVisibleEdge(int index)
+{
+	if (index >= incomingOutgoingEdgePairCount)
+		return NULL;
+	return incomingOutgoingEdgePair[2 * index + 1];
 }

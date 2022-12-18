@@ -11,16 +11,28 @@ class PixelFace;
 class VoroniVertex
 {
 public:
-	float posX;
-	float posY;
+	//float posX;
+	//float posY;
+	Vector2D(pos);
+	float origX;
+	float origY;
 	HalfEdge* edge;
+
+	// If an edge is sharp, it cannot be moved by vertex optimisation algorithm
+	bool sharp;
 
 	// Pair of visible edges that are adjacent (if any)
 	HalfEdge** incomingOutgoingEdgePair;
 	int incomingOutgoingEdgePairCount;
 
+	// Energy of curvature and displacement. Used for optimising spline interpolated images.
+	float curvatureEnergy;
+	float displacementEnergy;
+
 	VoroniVertex(float xpos, float ypos)
-		: posX(xpos), posY(ypos), incomingOutgoingEdgePair(NULL), incomingOutgoingEdgePairCount(0)
+		: pos(xpos, ypos), origX(xpos), origY(ypos), sharp(false),
+		incomingOutgoingEdgePair(NULL), incomingOutgoingEdgePairCount(0),
+		curvatureEnergy(1000.0f), displacementEnergy(1000.0f)
 	{
 		edge = NULL;
 	}
@@ -28,23 +40,31 @@ public:
 
 	void resolveTJunctions();
 
-	inline void setPosition(float x, float y) { posX = x; posY = y; edge = NULL; }
+	inline void setPosition(float x, float y) { pos.x = x; pos.y = y; edge = NULL; }
 	inline void setEdge(HalfEdge* nedge) { edge = nedge; }
 
 	HalfEdge* getOutgoingOf(HalfEdge* incomingEdge);
 	HalfEdge* getIncomingOf(HalfEdge* outgoingEdge);
 
-	inline float getPosX() { return posX; }
-	inline float getPosY() { return posY; }
-	inline HalfEdge* getEdge() { return edge; }
+	HalfEdge* getOutgoingVisibleEdge(int index);
+
+	inline void setPosX(float x) { pos.x = x; }
+	inline void setPosY(float y) { pos.y = y; }
+	inline Vector2D getPos() { return pos; }
+	inline float getPosX() { return pos.x; }
+	inline float getPosY() { return pos.y; }
+	inline HalfEdge* getEdge() { return edge; } 
+	inline void setSharp(bool newSharpness) { sharp = newSharpness; }
+	inline bool isSharp() { return sharp; };
 };
 
 class PixelFace
 {
 private:
 	int index;
-	float posX;
-	float posY;
+	//float posX;
+	//float posY;
+	Vector2D pos;
 	float colR;
 	float colG;
 	float colB;
@@ -55,12 +75,13 @@ public:
 	PixelFace();
 	~PixelFace();
 
-	inline void setPosition(float x, float y) { posX = x; posY = y; }
+	inline void setPosition(float x, float y) { pos.x = x; pos.y = y; }
 	inline void setColor(float r, float g, float b, float a) { colR = r; colG = g; colB = b; colA = a; }
 	inline void setEdge(HalfEdge* newedge) { edge = newedge; }
 
-	inline float getPosX() { return posX; }
-	inline float getPosY() { return posY; }
+	inline Vector2D getPos() { return pos; }
+	inline float getPosX() { return pos.x; }
+	inline float getPosY() { return pos.y; }
 	inline float getColR() { return colR; }
 	inline float getColG() { return colG; }
 	inline float getColB() { return colB; }

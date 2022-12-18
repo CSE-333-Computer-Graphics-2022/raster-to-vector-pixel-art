@@ -16,6 +16,11 @@ void Vector2D::normalize()
 	}
 }
 
+float Vector2D::magnitude()
+{
+	return sqrt(x * x + y * y);
+}
+
 Vector2D operator+(Vector2D a, Vector2D b)
 {
 	return Vector2D(a.x + b.x, a.y + b.y);

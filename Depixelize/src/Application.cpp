@@ -29,8 +29,9 @@ int main(void)
 {
     // *******************************************************************************
     
-    // SCALABLE PARAMETERS
+    // EDITABLE PARAMETERS
     std::string imageSource = "res/textures/ralseisprite.png";
+    char imageSrc[500] = "res/textures/ralseiprite.png";
     int pixelsPerSquare = 1;
     int imageScale = 1500;
 
@@ -138,6 +139,8 @@ int main(void)
         bool replace_visible_edges_with_splines = false;
         bool splines_replaced = false;
 
+        int optimisationsPerformed = 0;
+
         /* Loop until the user closes the window */
         while (!glfwWindowShouldClose(window))
         {
@@ -153,11 +156,28 @@ int main(void)
             if (simplify_voroni_diagram && !diagram_simplified)
             {
                 voroniRenderer.bindVAO();
-                voroni.simplifyVoroniGraph();
+                if (!optimisationsPerformed)
+                {
+                    voroni.simplifyVoroniGraph();
+                    voroni.setVerticesSharpness();
+                }
+                
+                int numOptimisations = 50;
+                //for (int i = 0; i < numOptimisations; i++)
+                if(optimisationsPerformed < numOptimisations)
+                {
+                    voroni.optimiseImageVertices();
+                    std::cout << "Optimised (" << optimisationsPerformed+1 << "/" << numOptimisations << ")" << std::endl;
+                    optimisationsPerformed++;
+                }
+                else
+                {
+                    diagram_simplified = true;
+                }
                 voroni.setVoroniGraphTriangles();
                 voroniRenderer.updateVBO(voroni.getVoroniGraphTriangles(), voroni.getVoroniGraphTriangleCount() * sizeof(float));
                 voroniRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniGraphTriangleCount() / 6);
-                diagram_simplified = true;
+                //diagram_simplified = true;
                 show_voroni_diagram = true;
 
                 voroni.setHalfEdgesVisibility();
@@ -231,13 +251,22 @@ int main(void)
 
             // ImGUI Window
             {
-                ImGui::Text("RASTER DISPLAY CONTROLS");
+                ImGui::Begin("RASTER DISPLAY CONTROLS");
+                ImGui::InputText("File Path", imageSrc, sizeof(imageSrc));
+                ImGui::End();
+
+                ImGui::Begin("SIMILARITY GRAPH CONTROLS");
+                if (ImGui::Button("MAKE GRAPH PLANAR"))
+                {
+                    std::cout << "Add planarity" << std::endl;
+                }
                 ImGui::Checkbox("Show Similarity Graph", &show_similarity_graph);
                 ImGui::Checkbox("Show Voroni Diagram", &show_voroni_diagram);
                 ImGui::Checkbox("Simplify Voroni Diagram", &simplify_voroni_diagram);
                 ImGui::Checkbox("Show Visible Edges", &show_visible_edges);
                 ImGui::Checkbox("Replace Visible Edges with Splines", &replace_visible_edges_with_splines);
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::End();
             }
 
             // Render ImGui UI

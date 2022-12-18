@@ -201,6 +201,11 @@ void VoroniGraph::setVoroniGraphTriangles()
 	}
 	
 	// Transfer all data from the vector to the array
+	if (voroniGraphTriangles != NULL)
+		free(voroniGraphTriangles);
+	if (voroniGraphIndices != NULL)
+		free(voroniGraphIndices);
+
 	voroniGraphTriangleCount = renderVertices.size();
 	voroniGraphTriangles = (float*)malloc(voroniGraphTriangleCount * sizeof(float));
 	voroniGraphIndices = (unsigned int*)malloc(voroniGraphTriangleCount * (2 + 4) * sizeof(unsigned int));
@@ -240,6 +245,9 @@ void VoroniGraph::setVoroniVisibleEdgeLines()
 					float g = 1.0f;
 					float b = 0.0f;
 					float a = 1.0f;
+
+					// DISPLACING NODE FOR TESTING PURPOSES
+					//optimiseVertex(curr->getVertex());
 
 					// TESTING CODE: Check if edge has been excluded from a T Junction. Colour it differently if yes
 					bool partOfJunction1 = curr->getVertex()->getIncomingOf(curr) != NULL;
@@ -308,6 +316,7 @@ void VoroniGraph::setHalfEdgesVisibility()
 					break;
 				curr->setVisibility();
 				curr->getVertex()->resolveTJunctions();
+				
 				curr = curr->getNext();
 			} while (curr != start);
 		}
@@ -343,15 +352,86 @@ void VoroniGraph::simplifyVoroniGraph()
 	}
 }
 
-Vector2D* VoroniGraph::findBezierPoint(HalfEdge* edge)
+void VoroniGraph::setVerticesSharpness()
 {
+	std::cout << "Setting sharpness" << std::endl;
+	int pixelRows = sprite->getPixelRows();
+	int pixelCols = sprite->getPixelCols();
+
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			//std::cout << "At " << i << " " << j << std::endl;
+			std::vector<VoroniVertex*> cycleVertices;
+			// Get all the vertices part of the cycle
+			HalfEdge* start = pixelFaces[i][j].getEdge();
+			HalfEdge* curr = start;
+			do
+			{
+				cycleVertices.push_back(curr->getVertex());
+				curr = curr->getNext();
+			} while (curr != start);
+
+			// Check all vertices for sharpness, cyclically
+			int n = cycleVertices.size();
+			for (int v = 0; v < n; v++)
+			{
+				// Case 1.1: When the trapezoid is pointing upwards
+				if ((pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() / 4, sprite->getPixelRenderHeight() / 4) - cycleVertices[v]->getPos()).magnitude() <= 0.001f
+				 && (pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() / 4, sprite->getPixelRenderHeight() / 4) - cycleVertices[(v+1)%n]->getPos()).magnitude() <= 0.001f)
+				{	
+					bool corner1IsSharp =
+						(pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() / 2, -sprite->getPixelRenderHeight() / 2) - cycleVertices[(v + 2) % n]->getPos()).magnitude() <= 0.001f
+						|| (pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth()*3 / 4, -sprite->getPixelRenderHeight() / 4) - cycleVertices[(v + 2) % n]->getPos()).magnitude() <= 0.001f;
+					bool corner2IsSharp =
+						(pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() / 2, -sprite->getPixelRenderHeight() / 2) - cycleVertices[(v-1+n) % n]->getPos()).magnitude() <= 0.001f
+						|| (pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() * 3 / 4, -sprite->getPixelRenderHeight() / 4) - cycleVertices[(v-1+n) % n]->getPos()).magnitude() <= 0.001f;
+
+					//if ((pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() / 2, -sprite->getPixelRenderHeight() / 2) - cycleVertices[(v + 2) % n]->getPos()).magnitude() <= 0.001f
+						//&& (pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() / 2, -sprite->getPixelRenderHeight() / 2) - cycleVertices[(v - 1 + n) % n]->getPos()).magnitude() <= 0.001f)
+					if(corner1IsSharp && corner2IsSharp)
+					{
+						cycleVertices[(v - 1 + n) % n]->setSharp(true);
+						cycleVertices[(v) % n]->setSharp(true);
+						cycleVertices[(v + 1) % n]->setSharp(true);
+						cycleVertices[(v + 2) % n]->setSharp(true);
+					}
+				}
+				else if((pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() / 4, -sprite->getPixelRenderHeight() / 4) - cycleVertices[v]->getPos()).magnitude() <= 0.001f
+				 && (pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() / 4, -sprite->getPixelRenderHeight() / 4) - cycleVertices[(v + 1) % n]->getPos()).magnitude() <= 0.001f)
+				{
+					bool corner1IsSharp =
+						(pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() / 2, sprite->getPixelRenderHeight() / 2) - cycleVertices[(v + 2) % n]->getPos()).magnitude() <= 0.001f
+						|| (pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() * 3 / 4, sprite->getPixelRenderHeight() / 4) - cycleVertices[(v + 2) % n]->getPos()).magnitude() <= 0.001f;
+					bool corner2IsSharp =
+						(pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() / 2, sprite->getPixelRenderHeight() / 2) - cycleVertices[(v - 1 + n) % n]->getPos()).magnitude() <= 0.001f
+						|| (pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() * 3 / 4, sprite->getPixelRenderHeight() / 4) - cycleVertices[(v - 1 + n) % n]->getPos()).magnitude() <= 0.001f;
+
+					//if ((pixelFaces[i][j].getPos() + Vector2D(sprite->getPixelRenderWidth() / 2, sprite->getPixelRenderHeight() / 2) - cycleVertices[(v + 2) % n]->getPos()).magnitude() <= 0.001f
+						//&& (pixelFaces[i][j].getPos() + Vector2D(-sprite->getPixelRenderWidth() / 2, sprite->getPixelRenderHeight() / 2) - cycleVertices[(v - 1 + n) % n]->getPos()).magnitude() <= 0.001f)
+					if (corner1IsSharp && corner2IsSharp)
+					{
+						cycleVertices[(v - 1 + n) % n]->setSharp(true);
+						cycleVertices[(v) % n]->setSharp(true);
+						cycleVertices[(v + 1) % n]->setSharp(true);
+						cycleVertices[(v + 2) % n]->setSharp(true);
+					}
+				}
+			}
+		}
+	}
+}
+
+Vector2D* VoroniGraph::findBezierPoint(HalfEdge* edge, float epsilon)
+{
+	Vector2D* ans = NULL;
 	if (edge == NULL || !edge->isVisible())
 	{
 		//std::cout << "Edge not visible" << std::endl;
 		return NULL;
 	}
 		
-
 	// Getting the 4 points adjacent to a halfedge
 	Vector2D* v1;
 	Vector2D* v2;
@@ -382,12 +462,12 @@ Vector2D* VoroniGraph::findBezierPoint(HalfEdge* edge)
 	if (v1 == NULL)
 	{
 		//std::cout << "v1 is null" << std::endl;
-		return NULL;
+		ans = NULL;
 	}
 	else if(v4 == NULL)
 	{
 		//std::cout << "v4 is null" << std::endl;
-		return NULL;
+		ans = NULL;
 	}
 	else
 	{
@@ -405,49 +485,83 @@ Vector2D* VoroniGraph::findBezierPoint(HalfEdge* edge)
 		float b2 = -xs2;
 		float c2 = xs2 * (v2->y) - ys2 * (v2->x);
 
-		if (abs(a1 * b2 - a2 * b1) < 0.0003f)
+		if (abs(a1 * b2 - a2 * b1) <= epsilon)
 			return NULL;
 		else
 		{
 			float x_ans = (b1 * c2 - b2 * c1) / (a1 * b2 - a2 * b1);
 			float y_ans = (a2 * c1 - a1 * c2) / (a1 * b2 - a2 * b1);
-
-			return new Vector2D(x_ans, y_ans);
+			
+			ans = new Vector2D(x_ans, y_ans);
 		}
 	}
+
+	// Garbage Collection
+	if (v1 != NULL)
+		delete v1;
+	if (v2 != NULL)
+		delete v2;
+	if (v3 != NULL)
+		delete v3;
+	if (v4 != NULL)
+		delete v4;
+
+	// Return calculated bezier point
+	return ans;
 }
 
-void VoroniGraph::insertSplineCurve(HalfEdge* edge, Vector2D* bezierPoint, int samples)
+std::vector<Vector2D*> VoroniGraph::sampleBezierPoints(HalfEdge* edge, Vector2D* bezierPoint, int samples)
 {
-	//std::cout << "H0 - spline" << std::endl;
-	//Vector2D* bezierPoint = findBezierPoint(edge);
-	if (bezierPoint == NULL)
-	{
-		//std::cout << "No bezier point found" << std::endl;
-		return;
-	}
-
-	//std::cout << "H1" << std::endl;
+	std::vector<Vector2D*> sampledPoints;
 
 	Vector2D p0(edge->getVertex()->getPosX(), edge->getVertex()->getPosY());
 	Vector2D p1(bezierPoint->x, bezierPoint->y);
 	Vector2D p2(edge->getOpp()->getVertex()->getPosX(), edge->getOpp()->getVertex()->getPosY());
 
+	/*VoroniVertex* startVertex = edge->getVertex();
+	VoroniVertex* endVertex = edge->getVertex();*/
+
+	for (int i = 0; i <= samples; i++)
+	{
+		//std::cout << "Working on sample " << i << std::endl;
+		float t = ((float)(i)) / ((float)(samples + 1));
+		Vector2D* vec = new Vector2D((1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
+									 (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y);
+		sampledPoints.push_back(vec);
+	}
+
+	return sampledPoints;
+}
+
+void VoroniGraph::insertSplineCurve(HalfEdge* edge, Vector2D* bezierPoint, int samples)
+{
+	if (bezierPoint == NULL)
+	{
+		return;
+	}
+
+	/*Vector2D p0(edge->getVertex()->getPosX(), edge->getVertex()->getPosY());
+	Vector2D p1(bezierPoint->x, bezierPoint->y);
+	Vector2D p2(edge->getOpp()->getVertex()->getPosX(), edge->getOpp()->getVertex()->getPosY());*/
+
 	VoroniVertex* startVertex = edge->getVertex();
 	VoroniVertex* endVertex = edge->getVertex();
 
-	for (int i = 0; i < samples; i++)
+	std::vector<Vector2D*> sampledPoints = sampleBezierPoints(edge, bezierPoint, samples);
+
+	//for (int i = 0; i < samples; i++)
+	for(Vector2D* vec: sampledPoints)
 	{
 		//std::cout << "Working on sample " << i << std::endl;
-		float t = ((float)(i + 1)) / ((float)(samples + 1));
-		Vector2D vec((1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
-					 (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y);
+		//float t = ((float)(i + 1)) / ((float)(samples + 1));
+		//Vector2D vec((1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
+					 //(1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y);
 		
 		edge->setVisibility(false);
 		edge->getOpp()->setVisibility(false);
 
 		// Inserting new vertex between start and end vertices
-		VoroniVertex* newVertex = new VoroniVertex(vec.x, vec.y);
+		VoroniVertex* newVertex = new VoroniVertex(vec->x, vec->y);
 		newVertex->setEdge(new HalfEdge(newVertex, edge->getPixel()));
 		newVertex->getEdge()->setNextwithPrev(edge->getNext());
 		HalfEdge* e1 = new HalfEdge(newVertex, edge->getOpp()->getPixel());
@@ -470,15 +584,12 @@ void VoroniGraph::replaceVisibleEdgesWithSplines()
 	int pixelCols = sprite->getPixelCols();
 
 	std::map<HalfEdge*, Vector2D*> mp;
-	if (mp[pixelFaces[0][0].getEdge()] == NULL)
-		std::cout << "POTENTIAL??" << std::endl;
 
 	// Set visibility of each of the edges in the graph
 	for (int i = 0; i < pixelRows; i++)
 	{
 		for (int j = 0; j < pixelCols; j++)
 		{
-			//std::cout << "AT i = " << i << " j = " << j << std::endl;
 			HalfEdge* start = pixelFaces[i][j].getEdge();
 			HalfEdge* curr = start;
 			do
@@ -488,8 +599,7 @@ void VoroniGraph::replaceVisibleEdgesWithSplines()
 				HalfEdge* next = curr->getNext();
 				if (curr->isVisible() /*&& mp[curr->getOpp()] == NULL */ )
 				{
-					mp[curr] = findBezierPoint(curr);
-					//insertSplineCurve(curr, 10);
+					mp[curr] = findBezierPoint(curr, 0.0005f);
 				}
 				curr = next;
 			} while (curr != start);
@@ -516,9 +626,176 @@ void VoroniGraph::replaceVisibleEdgesWithSplines()
 	}
 }
 
+void VoroniGraph::optimiseVertex(VoroniVertex* vertex)
+{
+	// IF the vertex is a 'sharp' vertex, it cannot be moxed from its original position (Or, cannot be 'optimised'. 
+	if (vertex -> isSharp())
+		return;
+
+	// Taking Random samples of displacement
+	int noRandomSamples = 30;
+	std::vector<Vector2D> randomSamplesList;
+	Vector2D noDisplacement(0.0f, 0.0f);
+	randomSamplesList.push_back(noDisplacement);
+
+	for (int i = 0; i < noRandomSamples; i++)
+	{
+		float randRadius = (float(rand()) / float((RAND_MAX))) * 0.03f;
+		float randAngle = (float(rand()) / float((RAND_MAX))) * 2.0f * 3.14159f;
+
+		float dx = randRadius * cos(randAngle);
+		float dy = randRadius * sin(randAngle);
+
+		Vector2D v(dx, dy);
+		randomSamplesList.push_back(v);
+	}
+
+	// Getting the outgoing visible vectors of this vertex (in the given range)
+	int edgeRange = 1;
+	std::vector<HalfEdge*> edgeSequence;
+	HalfEdge* currEdge = vertex->getOutgoingVisibleEdge(0);
+	for (int i = 0; i < edgeRange; i++) // Adding the vertices behind the given vertex first
+	{
+		if (currEdge == NULL)
+			return;
+		edgeSequence.push_back(currEdge->getOpp());
+		currEdge = currEdge->getOpp()->getVertex()->getOutgoingOf(currEdge);
+	}
+	reverse(edgeSequence.begin(), edgeSequence.end());
+
+	currEdge = vertex->getOutgoingVisibleEdge(1);
+	for (int i = 0; i < edgeRange; i++)
+	{
+		if (currEdge == NULL)
+			return;
+		edgeSequence.push_back(currEdge);
+		currEdge = currEdge->getOpp()->getVertex()->getOutgoingOf(currEdge);
+	}
+
+	//HalfEdge* edge1 = vertex->getOutgoingVisibleEdge(0)->getOpp();
+	//HalfEdge* edge2 = vertex->getOutgoingVisibleEdge(1);
+	//if (edge1 == NULL || edge2 == NULL)
+		//return;
+
+	int bestSampleIndex = -1;
+	Vector2D prevPos(vertex->getPosX(), vertex->getPosY());
+
+	// Trying each sampled displacement point and calculating curvature
+	int curveSamples = 20;
+	for (int s = 0; s < randomSamplesList.size(); s++)
+	{
+
+		// Setting the displacement value on the vertex
+		vertex->setPosX(vertex->origX + randomSamplesList[s].x);
+		vertex->setPosY(vertex->origY + randomSamplesList[s].y);
+
+		// Calculate Bezier vertices for both of the half edges
+		//Vector2D* bezierpt1 = findBezierPoint(edge1);
+		//Vector2D* bezierpt2 = findBezierPoint(edge2);
+		//if (bezierpt1 == NULL || bezierpt2 == NULL)
+			//continue;
+
+		// Sample points from both edges
+		//std::vector<Vector2D*> sampledPoints = sampleBezierPoints(edge1, bezierpt1, curveSamples);
+		std::vector<Vector2D*> sampledPoints(0);
+		for (HalfEdge* edge : edgeSequence)
+		{
+			Vector2D* bezierpt = findBezierPoint(edge);
+			if (bezierpt == NULL)
+				continue;
+			std::vector<Vector2D*> sampledPointsNew = sampleBezierPoints(edge, bezierpt, curveSamples);
+			sampledPoints.insert(sampledPoints.end(), sampledPointsNew.begin(), sampledPointsNew.end());
+			delete bezierpt;
+		}
+
+
+		//sampledPoints.push_back(new Vector2D(vertex->getPosX(), vertex->getPosY()));
+		//std::vector<Vector2D*> sampledPoints2 = sampleBezierPoints(edge2, bezierpt2, curveSamples);
+		//std::cout << sampledPoints.size() << " + " << sampledPoints2.size();
+		//sampledPoints.insert(sampledPoints.end(), sampledPoints2.begin(), sampledPoints2.end());
+		//std::cout << " = " << sampledPoints.size() << std::endl;
+
+
+		// Get unit tangents of sampled points
+		std::vector<Vector2D> sampledUnitTangents;
+		for (int i = 1; i < sampledPoints.size(); i++)
+		{
+			Vector2D v = *sampledPoints[i] - *sampledPoints[i-1];
+			v.normalize();
+			sampledUnitTangents.push_back(v);
+		}
+
+		// Getting curvature from the summation of sampled unit tangents
+		float totalCurvature = 0.0f;
+		for (int i = 1; i < sampledUnitTangents.size(); i++)
+		{
+			Vector2D v = sampledUnitTangents[i] - sampledUnitTangents[i - 1];
+			totalCurvature += v.magnitude();
+		}
+		totalCurvature /= 4;
+
+		// PRINTING THE CURVATURE FOR TESTING PURPOSES
+		//std::cout << "C: " << totalCurvature << std::endl;
+
+		// Calculating displacement energy
+		float totalDisplacementEnergy = 0.0f;
+		Vector2D orig(vertex->origX, vertex->origY);
+		Vector2D disp(vertex->getPosX(), vertex->getPosY());
+		totalDisplacementEnergy = pow((orig - disp).magnitude()*50.0f, 4.0f);
+		//std::cout << totalDisplacementEnergy << std::endl;
+
+		// If the new energy is less than the previous, update energy values
+		if (vertex->curvatureEnergy + vertex->displacementEnergy > totalCurvature + totalDisplacementEnergy)
+		{
+			vertex->curvatureEnergy = totalCurvature;
+			vertex->displacementEnergy = totalDisplacementEnergy;
+
+			bestSampleIndex = s;
+		}
+
+		// Garbage collection; Deleting all allocated variables
+		//delete(bezierpt1);
+		//delete(bezierpt2);
+		for (Vector2D* v : sampledPoints)
+			delete v;
+	}
+
+	if (bestSampleIndex >= 0)
+	{
+		vertex->setPosX(vertex->origX + randomSamplesList[bestSampleIndex].x);
+		vertex->setPosY(vertex->origY + randomSamplesList[bestSampleIndex].y);
+	}
+	else
+	{
+		vertex->setPosX(prevPos.x);
+		vertex->setPosY(prevPos.y);
+	}
+}
+
+void VoroniGraph::optimiseImageVertices()
+{
+	int pixelRows = sprite->getPixelRows();
+	int pixelCols = sprite->getPixelCols();
+
+	// Set visibility of each of the edges in the graph
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			HalfEdge* start = pixelFaces[i][j].getEdge();
+			HalfEdge* curr = start;
+			do
+			{
+				if(curr->isVisible() && rand() % 5 == 0)
+					optimiseVertex(curr->getVertex());
+				curr = curr->getNext();
+			} while (curr != start);
+		}
+	}
+}
+
 void VoroniGraph::constructBorderEdges()
 {
-	std::cout << "STARTING MAKING EDGES" << std::endl;
 	int pixelRows = sprite->getPixelRows();
 	int pixelCols = sprite->getPixelCols();
 

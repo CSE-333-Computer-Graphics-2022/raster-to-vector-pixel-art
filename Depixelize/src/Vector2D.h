@@ -11,6 +11,7 @@ public:
 	Vector2D(float xval, float yval);
 
 	void normalize();
+	float magnitude();
 
 	friend Vector2D operator + (Vector2D a, Vector2D b);
 	friend Vector2D operator - (Vector2D a, Vector2D b);
