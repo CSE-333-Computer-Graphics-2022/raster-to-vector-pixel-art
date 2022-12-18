@@ -1,75 +1,27 @@
 #include "SimilarityGraph.h"
 
 SimilarityGraph::SimilarityGraph(RasterSprite raster, float vertexRenderRadius)
-	: rasterSprite(raster), vertexRadius(vertexRenderRadius), graphEdgeCount(0)
+	: rasterSprite(raster), vertexRadius(vertexRenderRadius), graphEdgeCount(0), planar(false)
 {
 	int pixelRows = raster.getPixelRows();
 	int pixelCols = raster.getPixelCols();
-	std::vector<std::vector<unsigned int>> pixelData = rasterSprite.getPixelData();
 
 	for (int i = 0; i < pixelRows; i++)
 	{
 		for (int j = 0; j < pixelCols; j++)
 		{
 			//std::vector<bool> newvec = { true, true, true, true, true, true, true, true };
-			std::vector<bool> newvec = {false, false, false, false, false, false, false, false};
+			std::vector<bool> newvec = {true, true, true, true, true, true, true, true};
 			adjacencyList.push_back(newvec);
 		}
 	}
 
-	resolveGraphDissimilarities();
-	resolveGraphCheckerboarding();
+	setGraphVertices();
 	setGraphEdges();
 
-	// SETTING GRAPH VERTEX VERTICES
-	float* vertices = (float*)malloc((2+4) * getGraphVertexRenderCount() * sizeof(float));
-
-	/*const int pixelRows = rasterSprite.getPixelRows();
-	const int pixelCols = rasterSprite.getPixelCols();*/
-	int ptr = 0;
-	for (int i = 0; i < pixelRows; i++)
-	{
-		for (int j = 0; j < pixelCols; j++)
-		{
-			float x = (2 * j - (pixelCols - 1)) * rasterSprite.getPixelRenderWidth() / 2;
-			float y = (2 * (pixelRows-i-1) - (pixelRows - 1)) * rasterSprite.getPixelRenderHeight() / 2;
-
-			vertices[ptr++] = x - (vertexRadius * rasterSprite.getPixelRenderWidth());
-			vertices[ptr++] = y + (vertexRadius * rasterSprite.getPixelRenderHeight());
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j] / 255.0f; vertices[ptr++] = 1.0f - pixelData[i][4 * j + 1] / 255.0f; 
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j + 2] / 255.0f; vertices[ptr++] = (pixelData[i][4 * j + 3] == 0 ? 0.2f : 1.0f);
-
-			vertices[ptr++] = x + (vertexRadius * rasterSprite.getPixelRenderWidth());
-			vertices[ptr++] = y + (vertexRadius * rasterSprite.getPixelRenderHeight());
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j] / 255.0f; vertices[ptr++] = 1.0f - pixelData[i][4 * j + 1] / 255.0f;
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j + 2] / 255.0f; vertices[ptr++] = (pixelData[i][4 * j + 3] == 0 ? 0.2f : 1.0f);
-
-			vertices[ptr++] = x - (vertexRadius * rasterSprite.getPixelRenderWidth());
-			vertices[ptr++] = y - (vertexRadius * rasterSprite.getPixelRenderHeight());
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j] / 255.0f; vertices[ptr++] = 1.0f - pixelData[i][4 * j + 1] / 255.0f;
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j + 2] / 255.0f; vertices[ptr++] = (pixelData[i][4 * j + 3] == 0 ? 0.2f : 1.0f);
-
-			vertices[ptr++] = x + (vertexRadius * rasterSprite.getPixelRenderWidth());
-			vertices[ptr++] = y - (vertexRadius * rasterSprite.getPixelRenderHeight());
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j] / 255.0f; vertices[ptr++] = 1.0f - pixelData[i][4 * j + 1] / 255.0f;
-			vertices[ptr++] = 1.0f - pixelData[i][4 * j + 2] / 255.0f; vertices[ptr++] = (pixelData[i][4 * j + 3] == 0 ? 0.2f : 1.0f);
-		}
-	}
-	graphVertexVertices = vertices;
-
-	// SETTING GRAPH VERTEX INDICES
-	unsigned int* indices = (unsigned int*)malloc(getGraphVertexIndexCount() * sizeof(unsigned int));
-	ptr = 0;
-	for (int i = 0; i < 4 * rasterSprite.getPixelRows() * rasterSprite.getPixelCols(); i += 4)
-	{
-		indices[ptr++] = i + 2;
-		indices[ptr++] = i + 1;
-		indices[ptr++] = i + 0;
-		indices[ptr++] = i + 1;
-		indices[ptr++] = i + 2;
-		indices[ptr++] = i + 3;
-	}
-	graphVertexIndices = indices;
+	//resolveGraphDissimilarities();
+	//resolveGraphCheckerboarding();
+	//setGraphEdges();
 }
 
 SimilarityGraph::~SimilarityGraph()
@@ -115,6 +67,79 @@ int SimilarityGraph::getGraphVertexIndexCount()
 	return rasterSprite.getPixelRows() * rasterSprite.getPixelCols() * 6;
 }
 
+void SimilarityGraph::setGraphVertices()
+{
+	// SETTING GRAPH VERTEX VERTICES
+	float* vertices = (float*)malloc((2 + 4) * getGraphVertexRenderCount() * sizeof(float));
+
+	int pixelRows = rasterSprite.getPixelRows();
+	int pixelCols = rasterSprite.getPixelCols();
+	std::vector<std::vector<unsigned int>> pixelData = rasterSprite.getPixelData();
+
+	/*const int pixelRows = rasterSprite.getPixelRows();
+	const int pixelCols = rasterSprite.getPixelCols();*/
+	int ptr = 0;
+	for (int i = 0; i < pixelRows; i++)
+	{
+		for (int j = 0; j < pixelCols; j++)
+		{
+			float x = (2 * j - (pixelCols - 1)) * rasterSprite.getPixelRenderWidth() / 2;
+			float y = (2 * (pixelRows - i - 1) - (pixelRows - 1)) * rasterSprite.getPixelRenderHeight() / 2;
+
+			float colR, colG, colB, colA;
+			if (planar)
+			{
+				colR = 1.0f - pixelData[i][4 * j] / 255.0f;
+				colG = 1.0f - pixelData[i][4 * j + 1] / 255.0f;
+				colB = 1.0f - pixelData[i][4 * j + 2] / 255.0f;
+				colA = (pixelData[i][4 * j + 3] == 0 ? 0.2f : 1.0f);
+			}
+			else
+			{
+				colR = 1.0f;
+				colG = 0.0f;
+				colB = 0.0f;
+				colA = 1.0f;
+			}
+
+			vertices[ptr++] = x - (vertexRadius * rasterSprite.getPixelRenderWidth());
+			vertices[ptr++] = y + (vertexRadius * rasterSprite.getPixelRenderHeight());
+			vertices[ptr++] = colR; vertices[ptr++] = colG;
+			vertices[ptr++] = colB; vertices[ptr++] = colA;
+
+			vertices[ptr++] = x + (vertexRadius * rasterSprite.getPixelRenderWidth());
+			vertices[ptr++] = y + (vertexRadius * rasterSprite.getPixelRenderHeight());
+			vertices[ptr++] = colR; vertices[ptr++] = colG;
+			vertices[ptr++] = colB; vertices[ptr++] = colA;
+
+			vertices[ptr++] = x - (vertexRadius * rasterSprite.getPixelRenderWidth());
+			vertices[ptr++] = y - (vertexRadius * rasterSprite.getPixelRenderHeight());
+			vertices[ptr++] = colR; vertices[ptr++] = colG;
+			vertices[ptr++] = colB; vertices[ptr++] = colA;
+
+			vertices[ptr++] = x + (vertexRadius * rasterSprite.getPixelRenderWidth());
+			vertices[ptr++] = y - (vertexRadius * rasterSprite.getPixelRenderHeight());
+			vertices[ptr++] = colR; vertices[ptr++] = colG;
+			vertices[ptr++] = colB; vertices[ptr++] = colA;
+		}
+	}
+	graphVertexVertices = vertices;
+
+	// SETTING GRAPH VERTEX INDICES
+	unsigned int* indices = (unsigned int*)malloc(getGraphVertexIndexCount() * sizeof(unsigned int));
+	ptr = 0;
+	for (int i = 0; i < 4 * rasterSprite.getPixelRows() * rasterSprite.getPixelCols(); i += 4)
+	{
+		indices[ptr++] = i + 2;
+		indices[ptr++] = i + 1;
+		indices[ptr++] = i + 0;
+		indices[ptr++] = i + 1;
+		indices[ptr++] = i + 2;
+		indices[ptr++] = i + 3;
+	}
+	graphVertexIndices = indices;
+}
+
 void SimilarityGraph::setGraphEdges()
 {
 	int pixelRows = rasterSprite.getPixelRows();
@@ -130,10 +155,26 @@ void SimilarityGraph::setGraphEdges()
 	{
 		for (int j = 0; j < pixelCols; j++)
 		{
+			float colR, colG, colB, colA;
+			if (planar)
+			{
+				colR = 1.0f - pixelData[i][4 * j] / 255.0f;
+				colG = 1.0f - pixelData[i][4 * j + 1] / 255.0f;
+				colB = 1.0f - pixelData[i][4 * j + 2] / 255.0f;
+				colA = (pixelData[i][4 * j + 3] == 0 ? 0.2f : 0.5f);
+			}
+			else
+			{
+				colR = 1.0f;
+				colG = 0.0f;
+				colB = 0.0f;
+				colA = 1.0f;
+			}
+
 			graphEdgeVertices[ptr++] = (2 * j - (pixelCols - 1)) * rasterSprite.getPixelRenderWidth() / 2;
 			graphEdgeVertices[ptr++] = (2 * (pixelRows-i-1) - (pixelRows - 1)) * rasterSprite.getPixelRenderHeight() / 2;
-			graphEdgeVertices[ptr++] = 1.0f - pixelData[i][4 * j] / 255.0f; graphEdgeVertices[ptr++] = 1.0f - pixelData[i][4 * j + 1] / 255.0f;
-			graphEdgeVertices[ptr++] = 1.0f - pixelData[i][4 * j + 2] / 255.0f; graphEdgeVertices[ptr++] = (pixelData[i][4 * j + 3] == 0 ? 0.25f : 0.5f);
+			graphEdgeVertices[ptr++] = colR; graphEdgeVertices[ptr++] = colG;
+			graphEdgeVertices[ptr++] = colB; graphEdgeVertices[ptr++] = colA;
 		}
 	}
 
@@ -172,6 +213,36 @@ void SimilarityGraph::setGraphEdges()
 			}
 		}
 	}
+}
+
+void SimilarityGraph::resetGraph()
+{
+	for (int i = 0; i < rasterSprite.getPixelRows(); i++)
+	{
+		for (int j = 0; j < rasterSprite.getPixelCols(); j++)
+		{
+			for (int k = 0; k < 8; k++)
+			{
+				adjacencyList[i * rasterSprite.getPixelCols() + j][k] = true;
+			}
+		}
+	}
+
+	planar = false;
+
+	setGraphVertices();
+	setGraphEdges();
+}
+
+void SimilarityGraph::resolveGraph()
+{
+	resolveGraphDissimilarities();
+	resolveGraphCheckerboarding();
+
+	planar = true;
+
+	setGraphVertices();
+	setGraphEdges();
 }
 
 void SimilarityGraph::resolveGraphDissimilarities()

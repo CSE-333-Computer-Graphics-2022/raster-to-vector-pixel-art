@@ -27,6 +27,8 @@ private:
 
 	int graphEdgeCount;
 
+	bool planar;
+
 public:
 	SimilarityGraph(RasterSprite raster, float vertexRenderRadius);
 	~SimilarityGraph();
@@ -43,13 +45,17 @@ public:
 	int getGraphVertexIndexCount();
 
 	// Set edges between all adjacent (side/diagonal) vertices, BASED ON ADJACENCY LIST
+	void setGraphVertices();
 	void setGraphEdges();
+	void resetGraph();
+	void resolveGraph();
 	// Resolve color dissimilarities; Remove edges between vertices having dissimilar colours
 	void resolveGraphDissimilarities();
 	// Resolve checkerboard overlaps, i.e., 2x2 subgrids having checkerboard patterns
 	void resolveGraphCheckerboarding();
 
 	inline bool edgeExists(int i, int j, int edgeNo) { return adjacencyList[i * rasterSprite.getPixelCols() + j][edgeNo]; }
+	inline bool isPlanar() { return planar; }
 
 private:
 	bool colorsSimilar(std::vector<std::vector<unsigned int>> pixelData, int i1, int j1, int i2, int j2);

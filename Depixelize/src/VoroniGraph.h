@@ -32,7 +32,7 @@ public:
 	void setSubPixels();
 	void constructHalfEdges();
 	void setVoroniGraphTriangles();
-	void setVoroniVisibleEdgeLines();
+	void setVoroniVisibleEdgeLines(bool showTJunctions = false);
 	void setHalfEdgesVisibility();
 	void simplifyVoroniGraph();
 	void setVerticesSharpness();

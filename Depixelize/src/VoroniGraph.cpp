@@ -221,7 +221,7 @@ void VoroniGraph::setVoroniGraphTriangles()
 	}
 }
 
-void VoroniGraph::setVoroniVisibleEdgeLines()
+void VoroniGraph::setVoroniVisibleEdgeLines(bool showTJunctions)
 {
 	std::vector<float> renderVertices;
 
@@ -249,15 +249,18 @@ void VoroniGraph::setVoroniVisibleEdgeLines()
 					// DISPLACING NODE FOR TESTING PURPOSES
 					//optimiseVertex(curr->getVertex());
 
-					// TESTING CODE: Check if edge has been excluded from a T Junction. Colour it differently if yes
-					bool partOfJunction1 = curr->getVertex()->getIncomingOf(curr) != NULL;
-					bool partOfJunction2 = curr->getOpp()->getVertex()->getOutgoingOf(curr) != NULL;
-					bool partOfJunctions = partOfJunction1 && partOfJunction2;
-					/*if (!partOfJunctions)
+					// Show T Junctions if requested by user
+					if (showTJunctions)
 					{
-						b = 1.0f;
-						g = 0.0f;
-					}*/
+						bool partOfJunction1 = curr->getVertex()->getIncomingOf(curr) != NULL;
+						bool partOfJunction2 = curr->getOpp()->getVertex()->getOutgoingOf(curr) != NULL;
+						bool partOfJunctions = partOfJunction1 && partOfJunction2;
+						if (!partOfJunctions)
+						{
+							b = 1.0f;
+							g = 0.0f;
+						}
+					}
 
 					float x1 = curr->getVertex()->getPosX();
 					float y1 = curr->getVertex()->getPosY();
@@ -754,8 +757,6 @@ void VoroniGraph::optimiseVertex(VoroniVertex* vertex)
 		}
 
 		// Garbage collection; Deleting all allocated variables
-		//delete(bezierpt1);
-		//delete(bezierpt2);
 		for (Vector2D* v : sampledPoints)
 			delete v;
 	}
