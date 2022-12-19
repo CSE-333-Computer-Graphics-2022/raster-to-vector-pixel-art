@@ -31,7 +31,7 @@ int main(void)
     
     // EDITABLE PARAMETERS
     std::string imageSource = "res/textures/mewsprite.png";
-    char* imageSrc = (char*)imageSource.c_str();//"res/textures/ralseiprite.png";
+    char* imageSrc = (char*)imageSource.c_str();
     int pixelsPerSquare = 10;
     int imageScale = 1500;
 
@@ -194,23 +194,7 @@ int main(void)
                 visibleEdgesRenderer.updateVBO(voroni.getVoroniVisibleEdgeLines(), voroni.getVoroniVisibleEdgeCount() * 12 * sizeof(float));
                 visibleEdgesRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniVisibleEdgeCount() * 2);
             }
-            //// Desimplify the Voronoi diagram when user asks
-            //if (!simplify_voroni_diagram && diagram_simplified)
-            //{
-            //    voroniRenderer.bindVAO();
-            //    voroni.setPixelFaces();
-            //    voroni.setSubPixels();
-            //    voroni.constructHalfEdges();
-            //    voroni.setVoroniGraphTriangles();
-            //    voroniRenderer.updateVBO(voroni.getVoroniGraphTriangles(), voroni.getVoroniGraphTriangleCount() * sizeof(float));
-            //    voroniRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniGraphTriangleCount() / 6);
-            //    diagram_simplified = false;
 
-            //    voroni.setHalfEdgesVisibility();
-            //    voroni.setVoroniVisibleEdgeLines();
-            //    visibleEdgesRenderer.updateVBO(voroni.getVoroniVisibleEdgeLines(), voroni.getVoroniVisibleEdgeCount() * 12 * sizeof(float));
-            //    visibleEdgesRenderer.updateIBO(voroni.getVoroniGraphIndices(), voroni.getVoroniVisibleEdgeCount() * 2);
-            //}
             // Display either the input raster image or the Voronoi diagram, based on user input
             if (replace_visible_edges_with_splines)
             {
@@ -262,9 +246,6 @@ int main(void)
             {
                 // DEBUG (default) WINDOW
                 ImGui::Begin("Debug");
-                //ImGui::Checkbox("Simplify Voroni Diagram", &simplify_voroni_diagram);
-                //ImGui::Checkbox("Show Visible Edges", &show_visible_edges);
-                /*ImGui::Checkbox("Replace Visible Edges with Splines", &replace_visible_edges_with_splines);*/
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 ImGui::End();
 

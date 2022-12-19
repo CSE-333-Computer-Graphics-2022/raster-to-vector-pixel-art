@@ -1,4 +1,4 @@
-#include "Voronigraph.h"
+#include "VoroniGraph.h"
 
 VoroniGraph::VoroniGraph(RasterSprite* rasterSprite, SimilarityGraph* similarityGraph)
 	:sprite(rasterSprite), graph(similarityGraph)
@@ -692,14 +692,7 @@ void VoroniGraph::optimiseVertex(VoroniVertex* vertex)
 		vertex->setPosX(vertex->origX + randomSamplesList[s].x);
 		vertex->setPosY(vertex->origY + randomSamplesList[s].y);
 
-		// Calculate Bezier vertices for both of the half edges
-		//Vector2D* bezierpt1 = findBezierPoint(edge1);
-		//Vector2D* bezierpt2 = findBezierPoint(edge2);
-		//if (bezierpt1 == NULL || bezierpt2 == NULL)
-			//continue;
-
 		// Sample points from both edges
-		//std::vector<Vector2D*> sampledPoints = sampleBezierPoints(edge1, bezierpt1, curveSamples);
 		std::vector<Vector2D*> sampledPoints(0);
 		for (HalfEdge* edge : edgeSequence)
 		{
@@ -710,14 +703,6 @@ void VoroniGraph::optimiseVertex(VoroniVertex* vertex)
 			sampledPoints.insert(sampledPoints.end(), sampledPointsNew.begin(), sampledPointsNew.end());
 			delete bezierpt;
 		}
-
-
-		//sampledPoints.push_back(new Vector2D(vertex->getPosX(), vertex->getPosY()));
-		//std::vector<Vector2D*> sampledPoints2 = sampleBezierPoints(edge2, bezierpt2, curveSamples);
-		//std::cout << sampledPoints.size() << " + " << sampledPoints2.size();
-		//sampledPoints.insert(sampledPoints.end(), sampledPoints2.begin(), sampledPoints2.end());
-		//std::cout << " = " << sampledPoints.size() << std::endl;
-
 
 		// Get unit tangents of sampled points
 		std::vector<Vector2D> sampledUnitTangents;
